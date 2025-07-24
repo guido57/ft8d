@@ -4,9 +4,9 @@ The original sources can be found at:
 
   https://sourceforge.net/p/wsjt/wsjtx/ci/master/tree/lib/ft8
 
-A brief description of the FT8 protocol can be found at:
+A detailed description of the FT8 protocol can be found at:
 
-  http://physics.princeton.edu/pulsar/k1jt/ft8.txt
+  https://wsjt.sourceforge.io/FT4_FT8_QEX.pdf
 
 This FT8 decoder is mainly used with the FT8 application for the Red Pitaya board:
 
