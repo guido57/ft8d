@@ -1,3 +1,5 @@
+# In this version I modified only Makefile to build on Linux Ubuntu
+
 Minimal set of files required to build the FT8 decoder by Joe Taylor, K1JT and Steve Franke, K9AN.
 
 The original sources can be found at:
@@ -17,3 +19,5 @@ Changes from the original sources:
   - crc14.cpp is replaced with crc14.c
   - hardcoded values are replaced with parameters in baseline.f90 and ft8b.f90
   - input format is changed to complex samples at 4000 samples per second
+
+
