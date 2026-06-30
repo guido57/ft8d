@@ -2,8 +2,12 @@
 Test it with:
 
 make clean
+
 make -j1
+
 ./ft8d ft8_3_7075500_181213_045500.c2
+
+
 
 
 Minimal set of files required to build the FT8 decoder by Joe Taylor, K1JT and Steve Franke, K9AN.
