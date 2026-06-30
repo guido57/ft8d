@@ -1,4 +1,4 @@
-# In this version I modified only Makefile to build on Linux Ubuntu
+## In this version I modified only Makefile to build on Linux Ubuntu
 
 Minimal set of files required to build the FT8 decoder by Joe Taylor, K1JT and Steve Franke, K9AN.
 
