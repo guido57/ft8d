@@ -12,8 +12,26 @@ FC = gfortran
 LD = gfortran
 RM = rm -f
 
-CFLAGS = -Wall -O3 -funroll-loops -march=armv7-a -mtune=cortex-a9 -mfpu=neon -mfloat-abi=hard -ffast-math -fsingle-precision-constant -mvectorize-with-neon-quad
-FFLAGS = -Wall -O3 -funroll-loops -march=armv7-a -mtune=cortex-a9 -mfpu=neon -mfloat-abi=hard -ffast-math -fsingle-precision-constant -mvectorize-with-neon-quad
+
+
+
+# CFLAGS = -Wall -O3 -funroll-loops \
+#  -march=armv7-a -mtune=cortex-a9 
+#  -mfpu=neon -mfloat-abi=hard -ffast-math -fsingle-precision-constant -mvectorize-with-neon-quad
+
+UNAME_M := $(shell uname -m)
+
+ifeq ($(UNAME_M), armv7l)
+    SIMD_FLAGS = -mfpu=neon -mfloat-abi=hard -mvectorize-with-neon-quad
+    ARCH_FLAGS = -march=armv7-a -mtune=cortex-a9
+else
+    SIMD_FLAGS =
+    ARCH_FLAGS =
+endif
+
+CFLAGS = -Wall -O3 -funroll-loops $(ARCH_FLAGS) $(SIMD_FLAGS)
+
+FFLAGS = -Wall -O3 -funroll-loops $(ARCH_FLAGS) $(SIMD_FLAGS)
 
 all: $(TARGET)
 
