@@ -6,20 +6,25 @@ program ft8d
   include 'ft8_params.f90'
   character infile*80,msg37*37,date*6,time*4
   character msgcall*13,msggrid*4
-  character*37 allmessages(MAXCAND)
+  character*37 seenmessages(MAXCAND)
   real s(NFFT1,NHSYM)
   real sbase(NFFT1)
   real candidate(3,MAXCAND)
   real*8 dialfreq
   complex dd(NMAX,4)
   logical newdat,lft8apon,lsubtract,ldupe,is_wav
-  integer allsnrs(MAXCAND)
+  real*8 seenxdt(MAXCAND), seenf1(MAXCAND)
+  integer nseen
   integer apsym(58)
   integer wav_ierr,nparts,nwavcfg,iwcfg
   integer env_status,nsync_calls,nft8b_calls
   character(len=8) prof_env
   logical profile_on
   real t0,t1,t_read,t_sync,t_ft8b
+
+  real :: elapsed, elapsed_start
+
+  call cpu_time(elapsed_start)
 
   apsym=0
   apsym(1)=99
@@ -33,6 +38,10 @@ program ft8d
   t_ft8b=0.0
   nsync_calls=0
   nft8b_calls=0
+  nseen=0
+  seenmessages='                                     '
+  seenxdt=0.0d0
+  seenf1=0.0d0
 
   nargs=iargc()
   if(nargs.ne.1) then
@@ -42,7 +51,7 @@ program ft8d
 
   call getarg(1,infile)
   is_wav = index(infile,'.wav').gt.0
-
+  
   dd = cmplx(0.0,0.0)
   if(is_wav) then
     if(profile_on) call cpu_time(t0)
@@ -83,17 +92,17 @@ program ft8d
 
   nfqso=0
 
-  do ipart=1,nparts
+  write(*,*) 'nparts ',nparts, ' npass=',npass, ' dialfreq=',dialfreq,' Hz, nfa=',nfa,' nfb=',nfb,' Hz'
+
+  do ipart=1,nparts !4 for .c2 and 2 for .wav
     ndecodes=0
-    allmessages='                                     '
-    allsnrs=0
     if(is_wav) then
       nwavcfg=2
     else
       nwavcfg=1
     endif
 
-    do iwcfg=1,nwavcfg
+    do iwcfg=1,nwavcfg  ! 1 for .c2 and 2 for .wav
       nQSOProgress=0
       n2=0
       ncontest=0
@@ -119,6 +128,8 @@ program ft8d
         newdat=.true.
         if(.not.is_wav) syncmin=1.5
 
+        ! Determine whether to subtract the previous pass's decodes 
+        ! from the current pass's decodes.
         if(ipass.eq.1) then
           lsubtract=.true.
           if(ndepth.eq.1) lsubtract=.false.
@@ -132,6 +143,7 @@ program ft8d
         endif
 
         if(profile_on) call cpu_time(t0)
+        ! Call sync8 to find candidate decodes in the current pass.
         call sync8(dd(1:NMAX,ipart),nfa+2000,nfb+2000,syncmin, &
           nfqso+2000,s,candidate,ncand,sbase)
         if(profile_on) then
@@ -147,6 +159,9 @@ program ft8d
           xbase=10.0**(0.1*(sbase(nint(f1/3.125))-40.0))
 
           if(profile_on) call cpu_time(t0)
+          ! Call ft8b to decode every candidate.
+          ! write(*,*) 'Decoding candidate ',icand,' of ',ncand,' (pass ',ipass,')'
+          ! write(*,*) '  NMAX=',NMAX,' f1=',f1,' xdt=',xdt,' sec, sync=',sync,' dB','ndepth=',ndepth,' lsubtract=',lsubtract
           call ft8b(dd(1:NMAX,ipart),newdat,nQSOProgress,nfqso+2000, &
             nftx,ndepth,lft8apon,lapcqonly,napwid,lsubtract,nagain, &
             ncontest,iaptype,f1,xdt,xbase,apsym,nharderrors,dmin, &
@@ -167,28 +182,37 @@ program ft8d
             endif
 
             ldupe=.false.
-            do id=1,ndecodes
-              if(msg37.eq.allmessages(id).and.nsnr.le.allsnrs(id)) ldupe=.true.
+            do id=1,nseen
+                  if(msg37.eq.seenmessages(id) .and. &
+                    abs(xdt-seenxdt(id)).le.0.5d0 .and. &
+                    abs(f1-seenf1(id)).le.5.0d0) ldupe=.true.
             enddo
             if(ldupe) cycle
 
             ndecodes=ndecodes+1
-            allmessages(ndecodes)=msg37
-            allsnrs(ndecodes)=nsnr
+            nseen=nseen+1
+            seenmessages(nseen)=msg37
+            seenxdt(nseen)=xdt
+            seenf1(nseen)=f1
 
+            call cpu_time(elapsed)
+            
             if(is_wav) then
-              write(*,2004) date,nsnr,xdt,nint(f1-2000+dialfreq),msg37
-2004        format(a6,1x,i4,f5.1,i5,1x,'~  ',a37)
+              write(*,2004) elapsed, date,nsnr,xdt,nint(f1-2000+dialfreq),msg37
+2004        format(f10.6,1x,a6,1x,i4,f5.1,i5,1x,'~  ',a37)
             else
-              write(*,1004) date,time,15*(ipart-1),min(sync,999.0),nint(xsnr), &
+              write(*,1004) elapsed, date,time,15*(ipart-1),min(sync,999.0),nint(xsnr), &
                   xdt,nint(f1-2000+dialfreq),msgcall,msggrid
-1004        format(a6,1x,a4,i2.2,f6.1,i4,f6.2,i9,1x,a13,1x,a4)
+1004        format(f10.6,1x,a6,1x,a4,i2.2,f6.1,i4,f6.2,i9,1x,a13,1x,a4)
             endif
           endif
         enddo
       enddo
     enddo
-  enddo
+  enddo       ! ipart=1,nparts
+
+  call cpu_time(elapsed)
+  write(*,*) 'Elapsed time (seconds): ',elapsed-elapsed_start
 
   if(profile_on) then
     write(error_unit,'(a,f8.4)') 'PROFILE read_s=',t_read
